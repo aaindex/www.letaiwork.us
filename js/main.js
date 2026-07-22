@@ -27,17 +27,26 @@ document.addEventListener("DOMContentLoaded", function () {
       button.disabled = true;
       if (status) status.textContent = "Sending...";
 
-      fetch(form.action, {
+      // The /ajax/ endpoint returns real JSON; the plain endpoint answers
+      // 200 + HTML even when delivery fails (e.g. form not yet activated).
+      var endpoint = form.action.replace("formsubmit.co/", "formsubmit.co/ajax/");
+
+      fetch(endpoint, {
         method: "POST",
         body: new FormData(form),
         headers: { Accept: "application/json" }
       })
         .then(function (response) {
-          if (response.ok) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (res) {
+          if (res.ok && String(res.data.success) === "true") {
             if (status) status.textContent = "Thanks — we'll get back to you within one business day.";
             form.reset();
           } else {
-            if (status) status.textContent = "Something went wrong — please email us directly at hello@letaiwork.us instead.";
+            if (status) status.textContent = res.data.message || "Something went wrong — please email us directly at hello@letaiwork.us instead.";
           }
         })
         .catch(function () {
